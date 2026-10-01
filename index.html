@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spooky Run - 3Dハロウィン・ランナー</title>
+  <!-- Google Fonts: Creepster (ハロウィン風) & Outfit (モダンUI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 画面赤点滅用ダメージフラッシュオーバーレイ -->
+  <div id="damage-flash"></div>
+
+  <!-- Three.js描画用コンテナ -->
+  <div id="game-canvas-container"></div>
+
+  <div class="game-container">
+    <!-- ヘッダーUI -->
+    <header class="game-header">
+      <h1 class="game-title">SPOOKY RUN</h1>
+      <div class="header-controls">
+        <button id="btn-sound" class="btn-icon" aria-label="サウンド切り替え" title="音声をON/OFFします">
+          <svg class="icon-speaker" viewBox="0 0 24 24" width="24" height="24">
+            <path id="speaker-path" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- HUD (ゲーム中のステータス表示) -->
+    <section class="game-stats">
+      <div class="stat-card score-card">
+        <span class="stat-label">SCORE</span>
+        <span id="score-val" class="stat-value">0</span>
+      </div>
+      <div class="stat-card distance-card">
+        <span class="stat-label">DISTANCE</span>
+        <span class="stat-value-container"><span id="distance-val" class="stat-value">0</span><span class="unit">m</span></span>
+      </div>
+      <div class="stat-card combo-card sweets-card">
+        <span class="stat-label">SWEETS</span>
+        <span class="stat-value-container"><span class="candy-icon">🍬</span> <span id="candy-val" class="stat-value">0</span></span>
+      </div>
+    </section>
+
+    <!-- 操作説明 (コンパクト) -->
+    <footer class="game-footer" id="control-hint">
+      <p>← → ジャンプ スライド</p>
+    </footer>
+
+    <!-- モバイル用操作アシスト表示 -->
+    <div id="swipe-zone" class="swipe-overlay" aria-hidden="true"></div>
+
+    <!-- 画面内十字キー (D-pad) -->
+    <div id="dpad" class="dpad">
+      <button id="dpad-up"   class="dpad-btn dpad-up"   aria-label="ジャンプ">▲</button>
+      <div class="dpad-row">
+        <button id="dpad-left"  class="dpad-btn dpad-left"  aria-label="左">◀</button>
+        <div class="dpad-center"></div>
+        <button id="dpad-right" class="dpad-btn dpad-right" aria-label="右">▶</button>
+      </div>
+      <button id="dpad-down"  class="dpad-btn dpad-down"  aria-label="スライド">▼</button>
+    </div>
+  </div>
+
+  <!-- オーバーレイ: スタート画面 -->
+  <div id="screen-start" class="screen-overlay active">
+    <div class="screen-card">
+      <h2 class="title-large glow-text">SPOOKY RUN</h2>
+      <p class="subtitle">死神の追跡から逃げ切れ！ 👻</p>
+      
+      <div class="best-score-display">
+        <span>MY BEST SCORE</span>
+        <span id="best-score-val">0</span>
+      </div>
+
+      <!-- 操作説明パネル -->
+      <div class="how-to-play">
+        <h3>HOW TO PLAY</h3>
+        <div class="controls-guide">
+          <div class="guide-item">
+            <span class="guide-key">← → / A D</span>
+            <span class="guide-desc">レーン変更</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-key">↑ / W / Space</span>
+            <span class="guide-desc">ジャンプ（墓石を回避）</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-key">↓ / S</span>
+            <span class="guide-desc">スライディング（クモの巣を回避）</span>
+          </div>
+          <div class="guide-item mobile-only-guide">
+            <span class="guide-key">📱 フリック</span>
+            <span class="guide-desc">スマホは上下左右スワイプで操作！</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="clear-condition-tip">
+        <span class="tip-icon">🏆</span>
+        <span>500メートル走破でゲームクリア！逃げ切れるか？</span>
+      </div>
+
+      <div class="audio-consent-tip">
+        <span class="tip-icon">🔔</span>
+        <span>ゲーム中、リアルタイム生成の不気味なサウンドが流れます</span>
+      </div>
+
+      <button id="btn-start" class="btn-primary pulse">逃走開始 🏃‍♂️💀</button>
+    </div>
+  </div>
+
+  <!-- オーバーレイ: リザルト画面 -->
+  <div id="screen-result" class="screen-overlay">
+    <div class="screen-card">
+      <h2 id="result-title" class="title-large glow-text caught-title">CAUGHT!</h2>
+      <p class="subtitle result-msg">死神に追いつかれてしまった...</p>
+
+      <div class="result-stats">
+        <div class="result-row">
+          <span>走行距離:</span>
+          <span class="text-orange font-bold"><span id="final-distance">0</span> m</span>
+        </div>
+        <div class="result-row">
+          <span>獲得お菓子:</span>
+          <span class="text-green font-bold">🍬 <span id="final-candy">0</span></span>
+        </div>
+        <div class="result-row">
+          <span>最終スコア:</span>
+          <span id="final-score" class="text-gold font-bold">0</span>
+        </div>
+        <div class="result-row new-high-score" style="display: none;">
+          <span class="badge-new">NEW</span>
+          <span class="text-gold font-bold">ハイスコア更新！🎉</span>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="btn-restart" class="btn-primary">再挑戦 🔄</button>
+        <button id="btn-to-start" class="btn-secondary">メニューへ 💀</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- ゲームロジック -->
+  <script src="game.js"></script>
+</body>
+</html>
